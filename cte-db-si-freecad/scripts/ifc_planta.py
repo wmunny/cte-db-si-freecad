@@ -51,7 +51,10 @@ def main():
                 if not c or c.Name != a.planta:
                     continue
             try:
-                v = np.array(ifcopenshell.geom.create_shape(s, e).geometry.verts).reshape(-1, 3)
+                forma = ifcopenshell.geom.create_shape(s, e)  # conservar referencia
+                v = np.array(list(forma.geometry.verts)).reshape(-1, 3)
+                if v.size == 0:
+                    continue
             except Exception:
                 continue
             mn, mx = v.min(0), v.max(0)

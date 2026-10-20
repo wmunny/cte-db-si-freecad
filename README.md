@@ -2,7 +2,9 @@
 
 **Skill para asistentes de IA (Claude, ChatGPT y otros compatibles con `SKILL.md`) que verifica el cumplimiento del CTE DB-SI — Seguridad en caso de incendio — sobre modelos de FreeCAD (vía MCP) o archivos IFC.**
 
-El asistente extrae del modelo los parámetros relevantes (plantas y cotas, recintos, superficies, puertas, pasillos, escaleras, muros, equipos PCI…), los contrasta con las exigencias de las secciones **SI 1 a SI 6** y emite un informe con cada comprobación marcada como `CUMPLE`, `NO CUMPLE`, `NO VERIFICABLE` o `NO APLICA`, citando apartado y tabla.
+El asistente extrae del modelo los parámetros relevantes (plantas y cotas, recintos, superficies, puertas, pasillos, escaleras, muros, equipos PCI…), los contrasta con las exigencias de las secciones **SI 1 a SI 6** y emite un informe con cada comprobación marcada como `CUMPLE`, `NO CUMPLE`, `NO VERIFICABLE`, `NO APLICA` o `ERROR DE MODELO`, citando apartado y tabla.
+
+> **¿Por dónde empiezo?** Lee el **[tutorial: del croquis al informe](docs/tutorial-del-croquis-al-informe.md)**: un ejercicio completo en tres escenas (dibujo 2D → modelo BIM → informe DB-SI) con los prompts usados y los resultados obtenidos con ChatGPT Desktop + FreeCAD.
 
 > [!WARNING]
 > Herramienta de **ayuda técnica orientativa**. No sustituye la justificación del técnico competente, el visado ni la licencia. Las cifras proceden del **texto consolidado del DB-SI de 4 de marzo de 2025**, que no tiene valor jurídico. Comprueba siempre la versión vigente y la normativa autonómica y municipal aplicable.
@@ -30,6 +32,7 @@ cte-db-si-freecad/
 ├── CHANGELOG.md
 ├── LICENSE
 ├── docs/
+│   ├── tutorial-del-croquis-al-informe.md   ← empieza aquí
 │   ├── instalacion-claude.md
 │   ├── instalacion-chatgpt.md
 │   ├── freecad-mcp.md
@@ -94,8 +97,8 @@ Cada cifra del `SKILL.md` se ha contrastado con ese documento. Las figuras del D
 
 - La anchura mínima de escaleras está en el **DB SUA** (fuera de este skill).
 - Estructuras de acero (anejo D): requieren datos de cálculo; quedan como `NO VERIFICABLE` salvo protección certificada.
-- Los recorridos de evacuación sin trazado explícito se **estiman** (cota inferior euclídea / superior "Manhattan").
-- `freecad_extraer.py` está comprobado en sintaxis; las propiedades de los objetos BIM pueden variar entre versiones de FreeCAD. `ifc_extraer.py` está probado con modelos IFC4 reales.
+- Los recorridos de evacuación sin trazado explícito se **estiman** (malla que evita muros y muebles, o cotas euclídea/"Manhattan"); no validan accesibilidad.
+- Probado con **ChatGPT Desktop + MCP de FreeCAD 1.x** sobre: dibujo 2D, modelo BIM de FreeCAD e IFC abierto en modo nativo. `ifc_extraer.py` probado con modelos IFC4. Las propiedades de los objetos BIM pueden variar entre versiones de FreeCAD: si el script no reconoce el modelo devuelve un diagnóstico.
 
 ## Contribuir
 

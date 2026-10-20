@@ -2,6 +2,23 @@
 
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/). Versionado [SemVer](https://semver.org/lang/es/).
 
+## [1.1.0] — 2026-10-20
+
+Mejoras surgidas de las pruebas reales con ChatGPT Desktop + MCP de FreeCAD (dibujo 2D → BIM → informe).
+
+### Añadido
+- Nuevos estados de resultado: **`ERROR DE MODELO`** (incoherencias del modelo, como recintos sin acceso, que no son incumplimientos del proyecto) e **`INFO`** (cálculos como la ocupación, que no se cuentan como CUMPLE).
+- **Preguntas priorizadas**: primero las imprescindibles, el resto sólo si el edificio lo requiere, en un único mensaje.
+- Criterio explícito de **cuándo aplica cada exigencia de SI 2** (NO APLICA frente a NO VERIFICABLE).
+- Estimación de recorridos por malla y comprobación de conectividad de recintos en las reglas del informe.
+- Regla de conclusión: "cumplimiento acreditado" sólo sin NO CUMPLE, NO VERIFICABLE ni ERROR DE MODELO relevantes.
+- `docs/tutorial-del-croquis-al-informe.md`: ejercicio pedagógico completo con prompts y resultados.
+
+### Corregido
+- `freecad_extraer.py` e `ifc_planta.py`: la geometría se leía encadenando `create_shape(...).geometry.verts`; con algunas versiones de IfcOpenShell (la incluida en FreeCAD) el objeto se liberaba antes y las cajas envolventes salían vacías (sin espesores de muro ni posiciones). Detectado en la prueba con ChatGPT Desktop + MCP FreeCAD.
+- `freecad_extraer.py` (BIM clásico): ahora lee el uso declarado en el edificio (IfcProperties, propiedad propia o descripción).
+- `freecad_extraer.py`: los elementos PCI sólo se cuentan si son objetos BIM; antes contaba también símbolos y textos 2D con "extintor" en el nombre (p. ej. del dibujo original oculto).
+
 ## [1.0.1] — 2026-10-20
 
 ### Corregido

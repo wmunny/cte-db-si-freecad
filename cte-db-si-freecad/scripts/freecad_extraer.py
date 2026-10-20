@@ -141,7 +141,10 @@ def extraer_de_ifc(f):
         if geom is None:
             return None
         try:
-            v = geom.create_shape(s, e).geometry.verts
+            forma = geom.create_shape(s, e)  # conservar la referencia: si se encadena, la
+            v = list(forma.geometry.verts)    # geometría puede liberarse y devolver vértices vacíos
+            if not v:
+                return None
             xs, ys, zs = v[0::3], v[1::3], v[2::3]
             return [round(float(x), 3) for x in (min(xs), min(ys), min(zs), max(xs), max(ys), max(zs))]
         except Exception:
@@ -246,6 +249,13 @@ def extraer_de_freecad():
             datos["plantas"].append({"nombre": o.Label, "cota_m": a_metros(o.Placement.Base.z)})
         elif c == "IfcBuilding":
             datos["edificio"]["nombre"] = o.Label
+            # Uso declarado: propiedades IFC, propiedades propias o descripción del edificio
+            pr = props_ifc_fc(o)
+            uso_b = next((v for k, v in pr.items() if "occupancytype" in k.lower() or k.lower() in ("uso", "use")), None)
+            for nombre in ("OccupancyType", "Uso", "Use"):
+                uso_b = uso_b or (str(getattr(o, nombre, "") or "") or None)
+            uso_b = uso_b or (str(getattr(o, "Description", "") or "") or None)
+            datos["edificio"]["psets"] = {"FreeCAD": {"OccupancyType": uso_b}} if uso_b else {}
         elif c == "IfcSpace":
             datos["espacios"].append({
                 "nombre": o.Label, "planta": planta_fc(o),
@@ -271,7 +281,8 @@ def extraer_de_freecad():
             datos["escaleras"].append({"nombre": o.Label, "ancho_m": a_metros(getattr(o, "Width", None)),
                                        "altura_m": a_metros(getattr(o, "Height", None)),
                                        "peldanos": getattr(o, "NumberOfSteps", None), "bbox": bbox_fc(o)})
-        elif c in ("IfcFireSuppressionTerminal", "IfcAlarm", "IfcSensor") or "extint" in o.Label.lower():
+        elif c in ("IfcFireSuppressionTerminal", "IfcAlarm", "IfcSensor") or \
+                (c and "extint" in o.Label.lower()):  # sólo objetos BIM; no símbolos/textos 2D
             datos["pci"].append({"nombre": o.Label, "clase": c, "bbox": bbox_fc(o)})
         elif c in ("IfcColumn", "IfcBeam", "IfcSlab", "IfcRoof"):
             datos["estructura"][c] += 1

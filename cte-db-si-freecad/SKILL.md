@@ -5,7 +5,7 @@ description: Verifica si un modelo de FreeCAD (vía MCP) o un archivo IFC cumple
 
 # Verificación CTE DB-SI sobre modelos FreeCAD (vía MCP) o archivos IFC
 
-Fuente normativa: **CTE Documento Básico SI, texto consolidado de 4 de marzo de 2025** (incluye RD 164/2025, BOE 10/04/2025). Todas las cifras de este skill están transcritas de ese documento. El texto consolidado no tiene valor jurídico; el informe debe decirlo.
+Fuente normativa: **CTE Documento Básico SI, texto consolidado de 4 de marzo de 2025** (incluye RD 164/2025, BOE 10/04/2025). Todas las cifras de este skill están transcritas de ese documento. El texto consolidado no tiene valor jurídico; el informe debe decirlo. **Versión del skill: 1.1.0** (indícala en el informe).
 
 Úsalo cuando el usuario pida comprobar si un plano/modelo cumple el CTE, el DB-SI, "normativa de incendios", sectorización, evacuación, anchos de puertas/escaleras, recorridos, ocupación, resistencia al fuego, etc., sobre un documento accesible por un MCP de FreeCAD o sobre un archivo IFC.
 
@@ -13,7 +13,13 @@ Fuente normativa: **CTE Documento Básico SI, texto consolidado de 4 de marzo de
 
 1. **Nunca inventes datos del proyecto.** Cada dato usado lleva su origen: `MODELO` (leído de FreeCAD o del IFC), `USUARIO` (lo ha dicho), `SUPUESTO` (hipótesis explícita, conservadora). Si un dato crítico falta, pregúntalo o marca la comprobación como `NO VERIFICABLE`.
 2. **Un plano no contiene todo.** Reacción al fuego, clasificación EI/REI de productos, potencias de instalaciones, carga de fuego, existencia de rociadores, etc. normalmente NO están en la geometría. Pídelos o déjalos como `NO VERIFICABLE`.
-3. **Resultado por comprobación:** `CUMPLE` · `NO CUMPLE` · `NO VERIFICABLE` (falta dato) · `NO APLICA`. Cita siempre el apartado y la tabla (p. ej. "SI 3, tabla 4.1").
+3. **Resultado por comprobación:** cita siempre el apartado y la tabla (p. ej. "SI 3, tabla 4.1") y usa uno de estos estados:
+   - `CUMPLE` / `NO CUMPLE`: exigencia contrastada con datos suficientes. Si es una estimación, añade "— estimado".
+   - `NO VERIFICABLE`: falta un dato del proyecto (materiales, herrajes, estructura…).
+   - `NO APLICA`: la exigencia no se activa para este edificio. Úsalo cuando el supuesto de aplicación no concurre (p. ej. no hay sectores distintos, ni colindantes, ni escaleras); no lo confundas con NO VERIFICABLE.
+   - `ERROR DE MODELO`: incoherencia del modelo que impide comprobar (recintos sin acceso, puertas sin hueco, espacios superpuestos, unidades incoherentes). **No es un incumplimiento del proyecto**: indícalo aparte y di qué corregir.
+   - `INFO`: cálculos o datos derivados que no son una exigencia en sí (ocupación de cálculo, altura de evacuación, superficie de sector). Muéstralos, pero no los cuentes como CUMPLE.
+   La ausencia de NO CUMPLE **no equivale** a cumplimiento global: dilo en la conclusión si quedan NO VERIFICABLE o ERROR DE MODELO.
 4. **Ámbito:** el DB-SI **no** se aplica a edificios/establecimientos/zonas de uso industrial sujetos al RSCIEI. Uso Almacén: SI 1 tabla 1.1 + anexos I-IV del RSCIEI (ocupación con SI 3 tabla 2.1, 40 m²/pers).
 5. **Unidades:** FreeCAD trabaja internamente en **mm** (longitudes) y **mm²** (áreas); un IFC declara sus propias unidades (los scripts ya convierten). Convierte siempre a m y m² antes de comparar. En un IFC, `OverallWidth` de una puerta es la anchura **nominal**, no la libre de paso.
 6. El informe es una **ayuda técnica**, no sustituye la justificación del proyectista ni el visado/licencia.
@@ -24,13 +30,19 @@ Fuente normativa: **CTE Documento Básico SI, texto consolidado de 4 de marzo de
    - **Original en FreeCAD (.FCStd)** con un MCP conectado → trabajar sobre el modelo vivo. Ejecuta `scripts/freecad_extraer.py` con la herramienta de ejecución de código del MCP (si el skill no trae la carpeta `scripts/`, usa los fragmentos de la sección 2).
    - **Archivo .ifc** (sin FreeCAD o como entregable) → leerlo directamente con IfcOpenShell: `python scripts/ifc_extraer.py modelo.ifc` (o `--json`). `scripts/ifc_planta.py modelo.ifc planta.png` dibuja la planta para revisarla. Requiere `pip install ifcopenshell numpy matplotlib`. No hace falta pasar por FreeCAD sólo para verificar.
    - **Plano 2D** (DXF, Draft, Sketch): avisa de que la verificación será muy aproximada y recomienda convertirlo antes a BIM (muros, puertas, espacios).
+   - **IFC abierto en FreeCAD en modo nativo** (FreeCAD 1.x, banco BIM): los objetos usan la propiedad `Class` ("IfcWall") en vez de `IfcType` y los elementos pueden no estar desplegados en el árbol. `freecad_extraer.py` lo detecta y lee el IFC con IfcOpenShell (incluido en FreeCAD). Si usas los fragmentos de la sección 2, busca también `Class` y no concluyas "2D" sólo porque no aparezcan objetos Arch.
+   - Si el script devuelve `NO RECONOCIDO`, **no supongas que es un plano 2D**: muestra el bloque `diagnostico` (TypeId y clases) y pregunta al usuario cómo se creó o abrió el modelo.
    - Ambos scripts devuelven un bloque **CALIDAD** (plantas, espacios, uso declarado, puertas, FireRating, estructura, materiales, cabecera "provisional"). **Muéstralo al usuario al principio**, explica qué comprobaciones quedarán como `NO VERIFICABLE` por cada carencia y pregunta si quiere completar el modelo o seguir con supuestos.
    - Flujo recomendado: verificar → corregir en FreeCAD (MCP o a mano) → volver a verificar → exportar IFC como entregable (opcionalmente verificarlo también como contraste).
 1. **Inspeccionar el MCP** (si se trabaja en FreeCAD): lista los documentos y objetos con las herramientas disponibles (típicamente `list_documents`, `get_objects`, `get_object`, `get_view`, `execute_code`). Si existe `execute_code` (ejecutar Python dentro de FreeCAD), usa los scripts de la sección 2; es la vía más fiable. Toma una captura con `get_view` si existe para orientarte.
 2. **Identificar el tipo de modelo**:
    - *BIM (Arch/BIM, IFC importado)*: hay `Arch Space`, `Arch Wall`, `Arch Window` (puertas con `IfcType`="Door"), `Arch Stairs`, `BuildingPart`/plantas (`IfcType`="Building Storey").
    - *2D (DXF/DWG importado, Draft/Sketch)*: líneas, polilíneas, textos y capas. Habrá que inferir recintos (polilíneas cerradas) y anchos (cotas o distancias entre líneas) → más datos `SUPUESTO`/`USUARIO`.
-3. **Recoger datos de partida** (tabla de la sección 3). Pregunta al usuario de una sola vez lo que falte y sea crítico: uso principal y usos subsidiarios, obra nueva / reforma / cambio de uso, existencia de instalación automática de extinción, si algún espacio es "aire libre", clases de reacción/resistencia previstas.
+3. **Recoger datos de partida** (tabla de la sección 3) con **preguntas priorizadas**, en un solo mensaje, y sólo las que el modelo no responda:
+   - **Siempre (imprescindibles):** uso principal y usos subsidiarios; obra nueva / reforma / cambio de uso; si es edificio exento o forma parte de otro; instalación automática de extinción (sí/no); anchura libre de paso de las puertas si sólo hay la nominal.
+   - **Sólo si el edificio lo requiere:** locales técnicos o de riesgo (si el modelo los sugiere); escaleras y su protección (si hay más de una planta); colindantes y fachadas (si no es exento o hay varios sectores); espacio de maniobra de bomberos (si la altura de evacuación > 9 m); zonas de refugio (según los umbrales de SI 3-9); ocupación prevista (si el usuario la conoce; recuerda que no rebaja la de la tabla 2.1).
+   - **Al final, como una sola pregunta:** "¿Dispones de materiales, resistencias al fuego o estructura? Si no, quedarán como NO VERIFICABLE."
+   - Si el usuario ya ha dado datos en su mensaje, no los vuelvas a preguntar. Si no responde algo, sigue con un `SUPUESTO` declarado o márcalo NO VERIFICABLE.
 4. **Calcular magnitudes derivadas**: altura de evacuación (desc./asc.), superficies construidas por sector, superficies útiles por recinto, ocupación (SI 3-2), asignación de ocupantes a salidas (SI 3-4.1).
 5. **Ejecutar las comprobaciones** SI 1 → SI 6 (secciones 5 a 10).
 6. **Emitir el informe** con el formato de la sección 12.
@@ -259,6 +271,12 @@ Continuidad de la compartimentación en patinillos, cámaras, falsos techos y su
 Incluye tuberías y conductos sin recubrimiento resistente (aislamiento lineal: subíndice L) y capas interiores no protegidas por capa EI 30. Carpas: T2 (UNE-EN 15619) o C-s2,d0. Pública concurrencia: butacas tapizadas UNE-EN 1021-1 y -2; textiles suspendidos Clase 1 UNE-EN 13773. Cables y similares: reglamentación específica.
 
 ## 6. SI 2 — Propagación exterior
+
+**Cuándo aplica cada exigencia** (decide primero; si el supuesto no concurre es `NO APLICA`, no `NO VERIFICABLE`):
+- Medianerías (1.1): sólo si hay edificio colindante.
+- Separación horizontal y franja vertical en fachada (1.2, 1.3) y franjas de cubierta y encuentro cubierta–fachada (2.1, 2.2): sólo entre **sectores distintos**, desde/hacia **zona de riesgo especial alto**, hacia **escalera o pasillo protegido**, o con **edificios colindantes**. Un edificio exento de un único sector, sin riesgo alto ni escaleras/pasillos protegidos → `NO APLICA`.
+- Reacción al fuego de fachadas y cámaras (1.4–1.6): **aplica siempre**; sin datos de materiales → `NO VERIFICABLE`.
+- BROOF (t1) en cubierta (2.3): aplica si hay zonas de cubierta a < 5 m de la proyección de fachadas no EI 60 del mismo o de otro edificio (p. ej. un cuerpo más alto junto a la cubierta). Una planta única sin fachadas por encima de la cubierta normalmente → `NO APLICA`; si no se conoce la volumetría → `NO VERIFICABLE`.
 
 - **Medianerías**: elementos verticales separadores de otro edificio ≥ EI 120.
 - **Propagación horizontal por fachada** (entre sectores, desde riesgo especial alto, o hacia escalera/pasillo protegido): puntos no EI 60 separados en proyección horizontal al menos d según el ángulo α entre fachadas (interpolar):
@@ -516,19 +534,25 @@ Fecha · Alcance: <plantas/zonas analizadas> · Tipo de obra: <…>
   por sector, ocupación total, extinción automática (sí/no), …
 
 2. RESUMEN
-  CUMPLE n · NO CUMPLE n · NO VERIFICABLE n · NO APLICA n
-  Incumplimientos principales (lista corta, con referencia)
+  CUMPLE n · NO CUMPLE n · NO VERIFICABLE n · NO APLICA n · ERROR DE MODELO n
+  (los INFO no se cuentan)
+  Incumplimientos principales y errores de modelo (lista corta, con referencia)
+  Conclusión: "cumplimiento acreditado" sólo si no hay NO CUMPLE, NO VERIFICABLE ni ERROR DE MODELO
+  relevantes; si no, "cumplimiento no acreditado" explicando qué falta.
 
 3. COMPROBACIONES
 | Ref. | Requisito | Exigido | Proyecto | Resultado | Observaciones |
+| SI 3-2 T2.1 | Ocupación de cálculo | — | 37 personas | INFO | densidades por recinto |
 | SI 1-1 T1.1 | Sup. máx. sector S1 (Administrativo) | ≤ 2.500 m² | 1.830 m² | CUMPLE | |
 | SI 3-4 T4.1 | Puerta P-03, P = 230 | A ≥ 1,15 m | 0,90 m | NO CUMPLE | ampliar o redistribuir |
 | SI 3-3 T3.1 | Recorrido máx. planta 2 (2 salidas) | ≤ 50 m | 41–58 m (estimado) | NO VERIFICABLE | trazar recorrido |
+| SI 3-3 T3.1 | Evacuación de cabinas de aseo | recorrido a salida | sin acceso modelado | ERROR DE MODELO | modelar puertas de cabina |
   (agrupar por SI 1 … SI 6)
 
-4. DATOS QUE FALTAN PARA COMPLETAR LA VERIFICACIÓN
-5. SUPUESTOS ADOPTADOS
-6. AVISO: verificación orientativa basada en el texto consolidado sin valor jurídico;
+4. ERRORES DE MODELO A CORREGIR (si los hay)
+5. DATOS QUE FALTAN PARA COMPLETAR LA VERIFICACIÓN
+6. SUPUESTOS ADOPTADOS
+7. AVISO: verificación orientativa basada en el texto consolidado sin valor jurídico;
    no sustituye la justificación del técnico competente ni otras normas (DB SUA, RIPCI, RSCIEI,
    normativa autonómica/municipal).
 ```
@@ -536,7 +560,9 @@ Fecha · Alcance: <plantas/zonas analizadas> · Tipo de obra: <…>
 Reglas del informe:
 - Muestra los cálculos intermedios clave (ocupación por recinto, reparto entre salidas con una bloqueada, P/200, etc.).
 - Si una exigencia depende de un dato no disponible, indica qué dato y cómo afecta (p. ej. "con extinción automática el límite pasa a 62,5 m").
-- Propón medidas correctoras concretas para cada NO CUMPLE.
+- Propón medidas correctoras concretas para cada NO CUMPLE y la corrección del modelo para cada ERROR DE MODELO.
+- Recorridos: si puedes ejecutar código, estima los recorridos con una malla (p. ej. 0,10 m) que evite muros, mobiliario y sanitarios y sólo atraviese huecos de puerta; indica que es una estimación de longitud, no de accesibilidad. Comprueba también que todo recinto ocupable está conectado con una salida (si no, ERROR DE MODELO).
+- Si citas fuentes fuera de este skill (p. ej. el DB-SI comentado del Ministerio), identifícalas como criterio interpretativo y enlázalas.
 - Si el usuario lo pide, ofrece marcar en FreeCAD los elementos que no cumplen (cambiar color/agrupar en "NO_CUMPLE_DBSI") — sólo con su permiso, porque modifica el documento.
 
 ## 13. Atajos de cálculo frecuentes
